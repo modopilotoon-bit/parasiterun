@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PARASITE RUN</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bio-red: #d72d38;
+      --toxic: #64e33b;
+      --cold: #76caff;
+      --ink: #07080a;
+      --panel: rgba(9, 13, 17, .86);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #030405;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color: #d8f7ef;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      opacity: .2;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,.09) 0 1px, transparent 1px 4px),
+        radial-gradient(circle at 50% 40%, transparent 0 45%, rgba(0,0,0,.56) 83%);
+      mix-blend-mode: screen;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      opacity: .13;
+      background-image:
+        linear-gradient(90deg, transparent 0 92%, rgba(100,227,59,.12) 93% 94%, transparent 95%),
+        linear-gradient(0deg, transparent 0 92%, rgba(118,202,255,.1) 93% 94%, transparent 95%);
+      background-size: 7px 7px;
+    }
+
+    #wrap {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(93, 255, 129, .09), transparent 25%),
+        radial-gradient(circle at 70% 20%, rgba(118, 202, 255, .11), transparent 30%),
+        linear-gradient(180deg, #06080a, #020303);
+    }
+
+    canvas {
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+      box-shadow: 0 0 90px rgba(0,0,0,.85);
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      background:
+        linear-gradient(180deg, rgba(1,2,3,.76), rgba(1,2,3,.92)),
+        radial-gradient(circle at 45% 25%, rgba(215,45,56,.16), transparent 28%),
+        radial-gradient(circle at 57% 50%, rgba(100,227,59,.12), transparent 24%);
+      backdrop-filter: blur(3px);
+    }
+
+    .screen.hidden { display: none; }
+
+    .menu {
+      width: min(760px, 94vw);
+      border: 1px solid rgba(118,202,255,.22);
+      border-radius: 8px;
+      padding: 28px;
+      background: linear-gradient(180deg, rgba(10,15,18,.92), rgba(4,6,7,.94));
+      box-shadow: 0 0 60px rgba(100,227,59,.12), inset 0 0 34px rgba(118,202,255,.05);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 9vw, 96px);
+      line-height: .9;
+      letter-spacing: 0;
+      color: #e8fff7;
+      text-shadow: 3px 0 #d72d38, -3px 0 #64e33b, 0 0 22px rgba(118,202,255,.3);
+    }
+
+    .tagline {
+      margin: 14px 0 24px;
+      color: #9bead1;
+      font-size: clamp(15px, 2vw, 21px);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+      margin: 18px 0 24px;
+      color: #b9c9c7;
+      font-size: 14px;
+    }
+
+    .controls span {
+      display: block;
+      padding: 9px 10px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.035);
+      border-radius: 6px;
+    }
+
+    .menu-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(100,227,59,.55);
+      border-radius: 6px;
+      padding: 13px 18px;
+      background: linear-gradient(180deg, rgba(100,227,59,.22), rgba(215,45,56,.18));
+      color: #effff8;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(100,227,59,.16);
+    }
+
+    button:hover { border-color: rgba(118,202,255,.85); }
+
+    button.secondary {
+      border-color: rgba(118,202,255,.28);
+      background: rgba(255,255,255,.045);
+      color: #9fb3b4;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    #toast {
+      position: fixed;
+      z-index: 6;
+      top: 86px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 9px 14px;
+      border-radius: 5px;
+      color: #eafff8;
+      background: rgba(5,10,10,.76);
+      border: 1px solid rgba(100,227,59,.3);
+      text-shadow: 0 0 10px rgba(100,227,59,.5);
+      opacity: 0;
+      transition: opacity .18s linear;
+      pointer-events: none;
+      font-size: 13px;
+    }
+
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="game" width="960" height="540" aria-label="PARASITE RUN"></canvas>
+  </div>
+
+  <div id="startScreen" class="screen">
+    <div class="menu">
+      <h1>PARASITE RUN</h1>
+      <p class="tagline">No tienes cuerpo. Roba uno.</p>
+      <div class="controls">
+        <span>A / D o flechas: moverte</span>
+        <span>W o arriba: saltar</span>
+        <span>E: infectar o activar panel</span>
+        <span>Shift: dash, disparo o fuerza</span>
+        <span>Q: abandonar huésped</span>
+        <span>R: reiniciar · Esc: pausa</span>
+      </div>
+      <div class="menu-actions">
+        <button id="startBtn">JUGAR TUTORIAL</button>
+        <button id="storeBtn" class="secondary" disabled>TIENDA PRÓXIMAMENTE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="endScreen" class="screen hidden">
+    <div class="menu">
+      <h1 id="endTitle">ESCAPE PARCIAL COMPLETADO</h1>
+      <p id="endText" class="tagline">Versión 1 finalizada</p>
+      <button id="restartBtn">REINICIAR</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const startScreen = document.getElementById("startScreen");
+    const endScreen = document.getElementById("endScreen");
+    const endTitle = document.getElementById("endTitle");
+    const endText = document.getElementById("endText");
+    const toast = document.getElementById("toast");
+    const W = canvas.width;
+    const H = canvas.height;
+    const WORLD_W = 4100;
+    const FLOOR = 456;
+    const GRAVITY = 1820;
+
+    const keys = new Map();
+    let audioCtx = null;
+    let last = 0;
+    let running = false;
+    let paused = false;
+    let cameraX = 0;
+    let shake = 0;
+    let toastTimer = 0;
+    let objective = "";
+    let gameOver = false;
+    let victory = false;
+    let hitStop = 0;
+    let rafId = 0;
+
+    // Personajes + física: cada huésped mantiene su rol jugable, pero con masa,
+    // aceleración y lectura visual propias para la build V1.5.
+    const hostStats = {
+      parasite: { label: "Parásito", w: 26, h: 18, speed: 285, jump: 485, stability: 24, accel: 25, air: 15, friction: .0006, gravity: 1.02, mass: .55, color: "#d72d38", accent: "#64e33b" },
+      guard: { label: "Guardia", w: 34, h: 62, speed: 196, jump: 570, stability: 46, accel: 18, air: 10, friction: .0018, gravity: 1, mass: 1, color: "#2d3840", accent: "#76caff" },
+      dog: { label: "Perro Mutado", w: 54, h: 30, speed: 325, jump: 650, stability: 38, accel: 24, air: 14, friction: .0009, gravity: 1.04, mass: .8, color: "#4aa935", accent: "#d72d38" },
+      robot: { label: "Robot Pesado", w: 54, h: 72, speed: 128, jump: 395, stability: 66, accel: 10, air: 5, friction: .006, gravity: 1.18, mass: 2.25, color: "#858b8e", accent: "#ff4b38" }
+    };
+
+    const state = {
+      player: null,
+      platforms: [],
+      hosts: [],
+      hazards: [],
+      doors: [],
+      panels: [],
+      breakables: [],
+      drones: [],
+      lasers: [],
+      bullets: [],
+      particles: [],
+      fog: [],
+      blood: [],
+      corpses: [],
+      signs: [],
+      exit: { x: 3960, y: FLOOR - 104, w: 70, h: 104 }
+    };
+
+    function reset() {
+      gameOver = false;
+      victory = false;
+      paused = false;
+      cameraX = 0;
+      shake = 0;
+      hitStop = 0;
+      objective = "Muévete hasta el guardia debilitado";
+      Object.assign(state, {
+        player: makePlayer(86, FLOOR - 18),
+        platforms: [
+          rect(0, FLOOR, WORLD_W, 90),
+          rect(0, 0, 40, H),
+          rect(420, FLOOR - 28, 110, 18),
+          rect(560, FLOOR - 52, 120, 18),
+          rect(1170, FLOOR - 46, 120, 18),
+          rect(1560, FLOOR - 82, 110, 18),
+          rect(1730, FLOOR - 104, 160, 18),
+          rect(2190, FLOOR - 36, 125, 18),
+          rect(2810, FLOOR - 44, 120, 18),
+          rect(3240, FLOOR - 38, 120, 18),
+          rect(3500, FLOOR - 54, 150, 18)
+        ],
+        hosts: [
+          makeHost("guard", 660, FLOOR - 58, "SEC-01", true),
+          makeHost("dog", 1235, FLOOR - 28, "CANIS-V", true),
+          makeHost("robot", 2240, FLOOR - 66, "UNIT-R", true),
+          makeHost("guard", 3450, FLOOR - 58, "SEC-02", true)
+        ],
+        hazards: [
+          rect(1845, FLOOR - 8, 130, 8, "toxic"),
+          rect(3130, FLOOR - 8, 95, 8, "toxic")
+        ],
+        doors: [
+          { x: 1010, y: FLOOR - 120, w: 26, h: 120, open: false, id: "d1" },
+          { x: 3740, y: FLOOR - 132, w: 30, h: 132, open: false, id: "final" }
+        ],
+        panels: [
+          { x: 920, y: FLOOR - 78, w: 24, h: 42, door: "d1", active: false },
+          { x: 3660, y: FLOOR - 80, w: 24, h: 44, door: "final", active: false }
+        ],
+        breakables: [
+          { x: 2545, y: FLOOR - 92, w: 42, h: 92, hp: 1, broken: false }
+        ],
+        drones: [
+          { x: 3040, y: FLOOR - 150, w: 28, h: 18, min: 2960, max: 3380, dir: 1, t: 0 },
+          { x: 3850, y: FLOOR - 168, w: 28, h: 18, min: 3820, max: 3940, dir: -1, t: 1 }
+        ],
+        lasers: [
+          { x: 2960, y: FLOOR - 118, w: 10, h: 110, on: true, t: 0 },
+          { x: 3560, y: FLOOR - 140, w: 10, h: 132, on: true, t: 1.2 }
+        ],
+        bullets: [],
+        particles: [],
+        fog: [],
+        blood: [],
+        corpses: [],
+        signs: [
+          { x: 145, y: FLOOR - 126, title: "01 DESPERTAR", lines: ["A/D: moverte", "W: saltar", "Sin cuerpo pierdes vida"] },
+          { x: 575, y: FLOOR - 154, title: "02 INFECCIÓN", lines: ["Acércate al guardia", "E: tomar huésped", "Shift: dash parásito"] },
+          { x: 855, y: FLOOR - 150, title: "03 ACCESO", lines: ["Guardia + E", "activa paneles azules"] },
+          { x: 1135, y: FLOOR - 154, title: "04 CAMBIO", lines: ["Q: salir del cuerpo", "o E: infectar directo"] },
+          { x: 1510, y: FLOOR - 164, title: "05 PERRO", lines: ["Corre y salta más", "pasa por túneles bajos"] },
+          { x: 2170, y: FLOOR - 146, title: "06 ROBOT", lines: ["Lento, resistente", "Shift: romper muros"] },
+          { x: 2885, y: FLOOR - 160, title: "07 PELIGROS", lines: ["Guardia dispara con Shift", "Evita toxina y láser"] },
+          { x: 3600, y: FLOOR - 152, title: "08 SALIDA", lines: ["Infecta al guardia", "E en el panel final"] }
+        ]
+      });
+      for (let i = 0; i < 70; i++) {
+        state.fog.push({ x: Math.random() * WORLD_W, y: FLOOR - 34 + Math.random() * 46, vx: 5 + Math.random() * 13, a: .04 + Math.random() * .08, r: 18 + Math.random() * 50 });
+      }
+      showToast("SUJETO P-13 DESPIERTO");
+      endScreen.classList.add("hidden");
+    }
+
+    function rect(x, y, w, h, type = "solid") { return { x, y, w, h, type }; }
+
+    function makePlayer(x, y) {
+      return {
+        x, y, vx: 0, vy: 0, type: "parasite", facing: 1, onGround: false,
+        stability: hostStats.parasite.stability, maxStability: hostStats.parasite.stability,
+        dash: 0, shootCd: 0, invuln: 0, coyote: 0, jumpBuffer: 0,
+        parasitePulse: 0, anim: 0, recoil: 0, land: 0, hurtFlash: 0, abilityFlash: 0,
+        morph: 0, lastVy: 0, prevGround: false, lean: 0
+      };
+    }
+
+    function makeHost(type, x, y, name, weak = false) {
+      const s = hostStats[type];
+      return { type, x, y, w: s.w, h: s.h, name, weak, alive: true, infected: false, wobble: Math.random() * 6, stun: 0 };
+    }
+
+    function startGame() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (running) return;
+      running = true;
+      last = 0;
+      startScreen.classList.add("hidden");
+      reset();
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function finish(win) {
+      victory = win;
+      gameOver = true;
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      endTitle.textContent = win ? "ESCAPE PARCIAL COMPLETADO" : "COLAPSO BIOLÓGICO";
+      endText.textContent = win ? "Versión 1 finalizada" : "El sujeto perdió todos sus huéspedes.";
+      endScreen.classList.remove("hidden");
+      beep(win ? 620 : 110, .18, win ? "triangle" : "sawtooth", .05);
+    }
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      toastTimer = 1.35;
+    }
+
+    function beep(freq, dur = .08, type = "square", gain = .035) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const amp = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      amp.gain.value = gain;
+      amp.gain.exponentialRampToValueAtTime(.0001, audioCtx.currentTime + dur);
+      osc.connect(amp).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + dur);
+    }
+
+    function key(name) { return keys.get(name); }
+    function left() { return key("a") || key("arrowleft"); }
+    function right() { return key("d") || key("arrowright"); }
+    function jumpKey() { return key("w") || key("arrowup") || key(" "); }
+
+    function just(code) {
+      const v = keys.get(code);
+      if (v === "pressed") { keys.set(code, true); return true; }
+      return false;
+    }
+
+    function loop(ts) {
+      if (!running) return;
+      const dt = Math.min((ts - last) / 1000 || 0, .033);
+      last = ts;
+      if (!paused) update(dt);
+      render();
+      if (running) rafId = requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+      const p = state.player;
+      toastTimer -= dt;
+      if (toastTimer <= 0) toast.classList.remove("show");
+      if (shake > 0) shake = Math.max(0, shake - dt * 18);
+      if (hitStop > 0) {
+        hitStop = Math.max(0, hitStop - dt);
+        updateParticles(dt * .45);
+        updateCamera(dt);
+        return;
+      }
+      p.invuln = Math.max(0, p.invuln - dt);
+      p.shootCd = Math.max(0, p.shootCd - dt);
+      p.recoil = Math.max(0, p.recoil - dt * 6);
+      p.land = Math.max(0, p.land - dt * 7);
+      p.hurtFlash = Math.max(0, p.hurtFlash - dt * 5);
+      p.abilityFlash = Math.max(0, p.abilityFlash - dt * 5);
+      p.morph = Math.max(0, p.morph - dt * 4);
+      p.jumpBuffer = Math.max(0, p.jumpBuffer - dt);
+      p.parasitePulse += dt;
+      p.anim += dt * (Math.abs(p.vx) > 14 ? Math.abs(p.vx) / 52 : 1.6);
+      p.lean += ((p.vx / Math.max(1, hostStats[p.type].speed)) - p.lean) * Math.min(1, dt * 9);
+
+      updateObjective();
+      updateControls(dt);
+      updateWorld(dt);
+      updateCamera(dt);
+      updateSurvival(dt);
+      handleInteractions();
+    }
+
+    function updateObjective() {
+      const x = state.player.x;
+      if (x < 540) objective = "Avanza al primer huésped: A/D y W";
+      else if (x < 820 && state.player.type === "parasite") objective = "Infecta al guardia debilitado con E o Shift";
+      else if (x < 1080) objective = state.doors[0].open ? "Puerta abierta: sigue avanzando" : "Usa al guardia: E en el panel azul";
+      else if (x < 1500) objective = "Cambia al perro: Q para salir o E para infectar directo";
+      else if (x < 2020) objective = "Perro mutado: cruza túnel y salto largo";
+      else if (x < 2620) objective = "Robot pesado: infecta y rompe el muro con Shift";
+      else if (x < 3440) objective = "Zona final: evita peligros y usa habilidades";
+      else if (x < 3780) objective = state.doors.find(d => d.id === "final").open ? "Corre a la salida de contención" : "Infecta guardia final y abre el panel";
+      else objective = "Entra en SALIDA DE CONTENCIÓN";
+    }
+
+    function updateControls(dt) {
+      const p = state.player;
+      const s = hostStats[p.type];
+      const accel = p.onGround ? s.accel : s.air;
+      const target = (right() ? 1 : 0) - (left() ? 1 : 0);
+      if (target) p.facing = target;
+      p.vx += (target * s.speed - p.vx) * Math.min(1, accel * dt);
+      if (!target && p.onGround) p.vx *= Math.pow(s.friction, dt);
+      if (p.type === "dog") p.vx += target * 24 * dt;
+      if (jumpKey()) p.jumpBuffer = .13;
+
+      if (p.jumpBuffer > 0 && (p.onGround || p.coyote > 0) && !p.jumpHeld) {
+        p.vy = -s.jump;
+        p.onGround = false;
+        p.coyote = 0;
+        p.jumpBuffer = 0;
+        p.jumpHeld = true;
+        p.land = .18;
+        dust(p.x, p.y + s.h / 2, 10, "#76caff");
+        beep(260, .06, "triangle");
+      }
+      if (!jumpKey() && p.vy < -120) p.vy *= .92;
+      if (!jumpKey()) p.jumpHeld = false;
+
+      if (p.morph <= 0 && just("shift")) useAbility();
+      if (p.morph <= 0 && just("e")) useInteractOrInfect();
+      if (p.morph <= 0 && just("q")) abandonHost();
+      if (just("r")) reset();
+      if (just("escape")) paused = !paused;
+    }
+
+    function useAbility() {
+      const p = state.player;
+      if (p.type === "parasite") {
+        p.dash = .18;
+        p.vx = p.facing * 650;
+        p.vy *= .35;
+        p.abilityFlash = .34;
+        shake = 3;
+        spray(p.x, p.y, 30, ["#d72d38", "#64e33b"], "bio");
+        beep(390, .07, "sawtooth");
+      } else if (p.type === "guard" && p.shootCd <= 0) {
+        p.shootCd = .35;
+        p.stability -= 1.2;
+        p.recoil = .22;
+        p.abilityFlash = .18;
+        p.vx -= p.facing * 62;
+        state.bullets.push({ x: p.x + p.facing * 28, y: p.y - 24, vx: p.facing * 760, life: .9, flash: .12 });
+        spray(p.x + p.facing * 30, p.y - 24, 10, ["#76caff", "#e8fff7"], "spark");
+        shake = 1.3;
+        beep(520, .045, "square", .03);
+      } else if (p.type === "dog") {
+        p.vx = p.facing * 485;
+        p.stability -= 1.35;
+        p.abilityFlash = .24;
+        dust(p.x, p.y + 8, 22, "#64e33b");
+        beep(340, .05, "triangle");
+      } else if (p.type === "robot") {
+        p.stability -= 2.4;
+        p.abilityFlash = .28;
+        p.vx += p.facing * 42;
+        shake = 7;
+        hitStop = .045;
+        beep(95, .12, "sawtooth", .055);
+        for (const wall of state.breakables) {
+          if (!wall.broken && Math.abs((p.x + p.facing * 38) - (wall.x + wall.w / 2)) < 78 && Math.abs(p.y - wall.y) < 120) {
+            wall.broken = true;
+            spray(wall.x + wall.w / 2, wall.y + wall.h / 2, 64, ["#9aa0a6", "#d72d38", "#76caff"], "debris");
+            showToast("PARED FRACTURADA");
+          }
+        }
+      }
+    }
+
+    function useInteractOrInfect() {
+      const p = state.player;
+      if (p.type !== "parasite") {
+        for (const panel of state.panels) {
+          if (dist(p.x, p.y, panel.x, panel.y) < 78 && p.type === "guard") {
+            panel.active = true;
+            const door = state.doors.find(d => d.id === panel.door);
+            if (door) door.open = true;
+            showToast("PUERTA DESBLOQUEADA");
+            beep(740, .12, "triangle");
+            spray(panel.x, panel.y, 22, ["#76caff", "#64e33b"]);
+            return;
+          }
+          if (dist(p.x, p.y, panel.x, panel.y) < 78 && p.type !== "guard") {
+            showToast("SOLO UN GUARDIA PUEDE USAR ESTE PANEL");
+            beep(150, .08, "square", .025);
+            return;
+          }
+        }
+      }
+      const target = nearestHost(72);
+      if (target) infect(target);
+    }
+
+    function abandonHost() {
+      const p = state.player;
+      if (p.type === "parasite") return;
+      spawnCorpse(p.type, p.x, p.y, p.facing, .7);
+      spray(p.x, p.y, 36, ["#d72d38", "#64e33b", "#20252a"], "bio");
+      showToast("CUERPO ABANDONADO");
+      p.type = "parasite";
+      p.maxStability = hostStats.parasite.stability;
+      p.stability = hostStats.parasite.stability;
+      p.morph = .18;
+      p.vx = p.facing * 170;
+      p.vy = -180;
+      p.hurtFlash = .18;
+      shake = 4;
+      beep(180, .08, "sawtooth");
+    }
+
+    function nearestHost(range) {
+      const p = state.player;
+      let best = null;
+      let bestD = range;
+      for (const h of state.hosts) {
+        if (!h.alive || h.infected) continue;
+        const d = dist(p.x, p.y, h.x, h.y);
+        if (d < bestD) { best = h; bestD = d; }
+      }
+      return best;
+    }
+
+    function infect(host) {
+      const p = state.player;
+      if (!host.alive) return;
+      spray(host.x, host.y - host.h / 2, 82, ["#d72d38", "#64e33b", "#76caff"], "bio");
+      flashAt(host.x, host.y - host.h / 2, 56, "#64e33b");
+      state.blood.push({ x: host.x, y: host.y, life: 1 });
+      host.alive = false;
+      host.infected = true;
+      p.type = host.type;
+      p.x = host.x;
+      p.y = host.y - hostStats[host.type].h / 2;
+      p.vx = 0;
+      p.vy = -90;
+      p.maxStability = hostStats[host.type].stability;
+      p.stability = p.maxStability;
+      p.dash = 0;
+      p.abilityFlash = .5;
+      p.hurtFlash = .18;
+      p.morph = .22;
+      p.recoil = 0;
+      p.land = .22;
+      shake = 8;
+      hitStop = .025;
+      showToast("HUÉSPED TOMADO");
+      beep(130, .08, "sawtooth", .06);
+      setTimeout(() => beep(430, .07, "triangle", .04), 70);
+    }
+
+    function updateWorld(dt) {
+      const p = state.player;
+      const s = hostStats[p.type];
+      p.prevGround = p.onGround;
+      p.lastVy = p.vy;
+      if (p.dash > 0) {
+        p.dash -= dt;
+        const h = nearestHost(48);
+        if (h) infect(h);
+      }
+
+      p.vy += GRAVITY * s.gravity * dt;
+      p.x += p.vx * dt;
+      collideAxis(p, "x");
+      p.y += p.vy * dt;
+      p.onGround = false;
+      collideAxis(p, "y");
+      if (!p.prevGround && p.onGround) {
+        const impact = Math.min(1, Math.abs(p.lastVy) / 900);
+        p.land = .18 + impact * .16;
+        dust(p.x, p.y + s.h / 2, 10 + impact * 22, p.type === "robot" ? "#9aa0a6" : "#76caff");
+        if (p.type === "robot" && impact > .45) shake = Math.max(shake, 3 + impact * 4);
+      }
+      p.coyote = p.onGround ? .09 : Math.max(0, p.coyote - dt);
+      p.x = Math.max(20, Math.min(WORLD_W - 40, p.x));
+
+      for (const h of state.hosts) {
+        if (!h.alive) continue;
+        h.wobble += dt * 5;
+        h.stun = Math.max(0, h.stun - dt);
+      }
+
+      for (const d of state.drones) {
+        d.x += d.dir * 58 * dt;
+        d.t += dt;
+        if (d.x < d.min || d.x > d.max) d.dir *= -1;
+        if (aabb(centerRect(p.x, p.y, s.w, s.h), rect(d.x - d.w / 2, d.y - d.h / 2, d.w, d.h))) hurt(4);
+      }
+
+      for (const l of state.lasers) {
+        l.t += dt;
+        l.on = Math.sin(l.t * 2.1) > .05;
+        if (l.on && aabb(centerRect(p.x, p.y, s.w, s.h), l)) hurt(5);
+      }
+
+      for (const hz of state.hazards) {
+        if (aabb(centerRect(p.x, p.y, s.w * .8, s.h * .8), hz)) hurt(p.type === "parasite" ? 9 : 3);
+      }
+
+      for (const b of state.bullets) {
+        b.x += b.vx * dt;
+        b.life -= dt;
+        for (const d of state.drones) {
+          if (b.life > 0 && aabb(rect(b.x - 3, b.y - 2, 6, 4), rect(d.x - d.w / 2, d.y - d.h / 2, d.w, d.h))) {
+            b.life = 0;
+            d.x = d.max + 999;
+            spray(b.x, b.y, 22, ["#76caff", "#9aa0a6"]);
+            showToast("DRON NEUTRALIZADO");
+          }
+        }
+      }
+      state.bullets = state.bullets.filter(b => b.life > 0);
+      for (const c of state.corpses) {
+        c.vy += GRAVITY * .9 * dt;
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        c.rot += c.spin * dt;
+        c.life -= dt;
+        if (c.y > FLOOR - 8) {
+          c.y = FLOOR - 8;
+          c.vy *= -.18;
+          c.vx *= .82;
+          c.spin *= .75;
+        }
+      }
+      state.corpses = state.corpses.filter(c => c.life > 0);
+
+      for (const f of state.fog) {
+        f.x += f.vx * dt;
+        if (f.x - cameraX > W + 120) f.x = cameraX - 120;
+      }
+
+      updateParticles(dt);
+      if (aabb(centerRect(p.x, p.y, s.w, s.h), state.exit) && state.doors.find(d => d.id === "final").open) finish(true);
+    }
+
+    function updateSurvival(dt) {
+      const p = state.player;
+      if (p.type === "parasite") {
+        p.stability -= dt * (p.dash > 0 ? 1.9 : .72);
+      } else {
+        p.stability -= dt * (p.type === "robot" ? .35 : .52);
+      }
+      if (p.stability <= 0) {
+        if (p.type === "parasite") {
+          p.stability = 0;
+          finish(false);
+        } else {
+          spawnCorpse(p.type, p.x, p.y, p.facing, 1.4);
+          spray(p.x, p.y, 58, ["#d72d38", "#22282c", "#64e33b"], p.type === "robot" ? "spark" : "bio");
+          showToast("HUÉSPED COLAPSADO");
+          p.type = "parasite";
+          p.maxStability = hostStats.parasite.stability;
+          p.stability = hostStats.parasite.stability * .72;
+          p.vy = -210;
+          p.vx *= .25;
+          p.hurtFlash = .25;
+          shake = 7;
+          hitStop = .05;
+          beep(90, .14, "sawtooth", .05);
+        }
+      }
+    }
+
+    function hurt(amount) {
+      const p = state.player;
+      if (p.invuln > 0) return;
+      p.stability -= amount;
+      p.invuln = .55;
+      p.hurtFlash = .42;
+      p.recoil = .25;
+      p.vx = -p.facing * (110 / hostStats[p.type].mass);
+      p.vy = -150 / Math.sqrt(hostStats[p.type].mass);
+      shake = 5;
+      spray(p.x, p.y, 24, ["#d72d38", "#64e33b"], "bio");
+      beep(75, .09, "sawtooth", .045);
+    }
+
+    function collideAxis(p, axis) {
+      const s = hostStats[p.type];
+      const body = centerRect(p.x, p.y, s.w, s.h);
+      const solids = [
+        ...state.platforms,
+        ...state.doors.filter(d => !d.open),
+        ...state.breakables.filter(b => !b.broken)
+      ];
+      for (const solid of solids) {
+        if (!aabb(body, solid)) continue;
+        if (axis === "x") {
+          if (p.vx > 0) p.x = solid.x - s.w / 2;
+          if (p.vx < 0) p.x = solid.x + solid.w + s.w / 2;
+          p.vx = 0;
+          body.x = p.x - s.w / 2;
+        } else {
+          if (p.vy > 0) { p.y = solid.y - s.h / 2; p.onGround = true; }
+          if (p.vy < 0) p.y = solid.y + solid.h + s.h / 2;
+          p.vy = 0;
+          body.y = p.y - s.h / 2;
+        }
+      }
+
+      if (p.type !== "dog") {
+        const tunnel = rect(1320, FLOOR - 52, 330, 52);
+        if (aabb(body, tunnel)) {
+          if (axis === "x") {
+            if (p.vx >= 0) p.x = tunnel.x - s.w / 2;
+            else p.x = tunnel.x + tunnel.w + s.w / 2;
+            p.vx = 0;
+          }
+        }
+      }
+    }
+
+    function handleInteractions() {
+      const p = state.player;
+      if (p.type === "parasite") {
+        const h = nearestHost(24);
+        if (h && (Math.abs(p.vx) > 280 || p.dash > 0)) infect(h);
+      }
+    }
+
+    function updateCamera(dt) {
+      const target = Math.max(0, Math.min(WORLD_W - W, state.player.x - W * .38));
+      cameraX += (target - cameraX) * Math.min(1, dt * 4.6);
+    }
+
+    function updateParticles(dt) {
+      for (const p of state.particles) {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += p.g * dt;
+        p.life -= dt;
+        p.rot += p.spin * dt;
+      }
+      state.particles = state.particles.filter(p => p.life > 0);
+      if (state.particles.length > 260) state.particles.splice(0, state.particles.length - 260);
+      for (const b of state.blood) b.life -= dt;
+      state.blood = state.blood.filter(b => b.life > 0);
+      if (Math.random() < .45) dust(state.player.x, state.player.y + hostStats[state.player.type].h / 2, 1, state.player.type === "parasite" ? "#d72d38" : "#44525a");
+      if (state.player.stability / state.player.maxStability < .32 && Math.random() < .08) {
+        const p = state.player;
+        const cols = p.type === "robot" ? ["#ff4b38", "#9aa0a6"] : ["#d72d38", "#64e33b"];
+        spray(p.x, p.y - hostStats[p.type].h * .45, 2, cols, p.type === "robot" ? "spark" : "bio");
+      }
+    }
+
+    // Partículas: spray biológico, chispas y escombros comparten motor liviano.
+    function spray(x, y, count, colors, mode = "bio") {
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const sp = (mode === "debris" ? 70 : 35) + Math.random() * (mode === "spark" ? 360 : 280);
+        state.particles.push({
+          x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 70,
+          g: (mode === "spark" ? 700 : 360) + Math.random() * 360, life: .22 + Math.random() * (mode === "spark" ? .38 : .8),
+          size: (mode === "debris" ? 3 : 2) + Math.random() * (mode === "spark" ? 3 : 5), color: colors[(Math.random() * colors.length) | 0],
+          rot: Math.random() * 7, spin: -8 + Math.random() * 16, mode
+        });
+      }
+    }
+
+    function flashAt(x, y, size, color) {
+      state.particles.push({ x, y, vx: 0, vy: 0, g: 0, life: .16, size, color, rot: 0, spin: 0, mode: "flash" });
+    }
+
+    function spawnCorpse(type, x, y, facing, life) {
+      if (type === "parasite") return;
+      state.corpses.push({ type, x, y: y + hostStats[type].h / 2, facing, vx: -facing * (45 + Math.random() * 70), vy: -180 - Math.random() * 80, rot: facing * .25, spin: facing * (1.5 + Math.random()), life });
+    }
+
+    function dust(x, y, count, color) {
+      for (let i = 0; i < count; i++) {
+        state.particles.push({
+          x: x + (Math.random() - .5) * 22, y: y + Math.random() * 5,
+          vx: -40 + Math.random() * 80, vy: -20 - Math.random() * 50,
+          g: 80, life: .24 + Math.random() * .4, size: 2 + Math.random() * 4,
+          color, rot: 0, spin: 0
+        });
+      }
+    }
+
+    function render() {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      const sx = (Math.random() - .5) * shake;
+      const sy = (Math.random() - .5) * shake;
+      ctx.clearRect(0, 0, W, H);
+      drawBackground(sx, sy);
+      ctx.translate(Math.round(-cameraX + sx), Math.round(sy));
+      drawLevel();
+      drawEntities();
+      drawParticles();
+      ctx.restore();
+      drawUI();
+      if (paused) drawPause();
+    }
+
+    function drawBackground(sx, sy) {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "#0a1317");
+      g.addColorStop(.52, "#0b1012");
+      g.addColorStop(1, "#050707");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(-cameraX * .24 + sx, sy);
+      for (let x = -120; x < WORLD_W; x += 240) {
+        ctx.fillStyle = "rgba(118,202,255,.026)";
+        ctx.fillRect(x, 56, 28, FLOOR - 66);
+        ctx.fillStyle = "rgba(100,227,59,.025)";
+        ctx.fillRect(x + 44, 120, 16, FLOOR - 132);
+        ctx.fillStyle = "rgba(255,255,255,.032)";
+        for (let y = 84; y < FLOOR - 40; y += 38) ctx.fillRect(x + 2, y, 24, 3);
+        tank(x + 112, FLOOR - 220, 54, 150);
+      }
+      for (let x = 0; x < WORLD_W; x += 90) {
+        ctx.strokeStyle = "rgba(30,42,48,.52)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, 18);
+        ctx.bezierCurveTo(x + 40, 90, x - 30, 150, x + 20, 250);
+        ctx.stroke();
+      }
+      ctx.restore();
+      const vignette = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * .78);
+      vignette.addColorStop(0, "rgba(0,0,0,0)");
+      vignette.addColorStop(1, "rgba(0,0,0,.48)");
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    function tank(x, y, w, h) {
+      ctx.fillStyle = "rgba(7,18,20,.64)";
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = "rgba(100,227,59,.11)";
+      ctx.fillRect(x + 7, y + 12, w - 14, h - 24);
+      ctx.fillStyle = "rgba(118,202,255,.14)";
+      ctx.fillRect(x + 10, y + 15, 5, h - 30);
+      ctx.fillStyle = "rgba(215,45,56,.12)";
+      ctx.fillRect(x + w - 16, y + h - 42, 8, 26);
+    }
+
+    function drawLevel() {
+      for (const f of state.fog) {
+        const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+        g.addColorStop(0, `rgba(118,202,255,${f.a})`);
+        g.addColorStop(1, "rgba(118,202,255,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2);
+      }
+
+      ctx.fillStyle = "#151c20";
+      for (const p of state.platforms) {
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = "rgba(118,202,255,.18)";
+        ctx.fillRect(p.x, p.y, p.w, 3);
+        ctx.fillStyle = "#151c20";
+      }
+      for (let x = 0; x < WORLD_W; x += 32) {
+        ctx.fillStyle = x % 96 === 0 ? "#172024" : "#0c1113";
+        ctx.fillRect(x, FLOOR + 8, 24, 4);
+      }
+
+      drawTunnel();
+      for (const s of state.signs) drawSign(s);
+      for (const hz of state.hazards) drawHazard(hz);
+      for (const d of state.doors) drawDoor(d);
+      for (const p of state.panels) drawPanel(p);
+      for (const b of state.breakables) if (!b.broken) drawBreakable(b);
+      for (const l of state.lasers) drawLaser(l);
+      drawExit();
+    }
+
+    function drawSign(s) {
+      const visible = Math.abs((s.x + 80) - (cameraX + W / 2)) < 720;
+      if (!visible) return;
+      ctx.fillStyle = "rgba(5,10,11,.88)";
+      ctx.fillRect(s.x, s.y, 190, 76);
+      ctx.strokeStyle = "rgba(118,202,255,.28)";
+      ctx.strokeRect(s.x, s.y, 190, 76);
+      ctx.fillStyle = "rgba(100,227,59,.16)";
+      ctx.fillRect(s.x + 8, s.y + 8, 174, 3);
+      ctx.fillStyle = "#9bead1";
+      ctx.font = "11px monospace";
+      ctx.fillText(s.title, s.x + 10, s.y + 24);
+      ctx.fillStyle = "#b9c9c7";
+      for (let i = 0; i < s.lines.length; i++) {
+        ctx.fillText(s.lines[i], s.x + 10, s.y + 42 + i * 14);
+      }
+    }
+
+    function drawTunnel() {
+      ctx.fillStyle = "rgba(5,8,9,.95)";
+      ctx.fillRect(1320, FLOOR - 52, 330, 52);
+      ctx.fillStyle = "rgba(100,227,59,.1)";
+      for (let x = 1330; x < 1640; x += 28) ctx.fillRect(x, FLOOR - 50, 16, 3);
+      ctx.fillStyle = "#1c2528";
+      ctx.fillRect(1312, FLOOR - 64, 346, 12);
+      ctx.fillStyle = "rgba(118,202,255,.16)";
+      ctx.fillRect(1324, FLOOR - 62, 312, 2);
+    }
+
+    function drawHazard(h) {
+      ctx.fillStyle = "rgba(100,227,59,.33)";
+      ctx.fillRect(h.x, h.y - 3, h.w, h.h + 6);
+      for (let x = h.x; x < h.x + h.w; x += 18) {
+        ctx.fillStyle = Math.random() > .5 ? "#64e33b" : "#d72d38";
+        ctx.fillRect(x, h.y - 6 - Math.random() * 4, 8, 2);
+      }
+    }
+
+    function drawDoor(d) {
+      ctx.fillStyle = d.open ? "rgba(50,90,80,.22)" : "#10151a";
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.fillStyle = d.open ? "rgba(100,227,59,.65)" : "rgba(215,45,56,.75)";
+      ctx.fillRect(d.x + 6, d.y + 10, d.w - 12, 8);
+      ctx.fillRect(d.x + 6, d.y + d.h - 20, d.w - 12, 8);
+    }
+
+    function drawPanel(p) {
+      ctx.fillStyle = "#11181b";
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+      ctx.fillStyle = p.active ? "#64e33b" : "#76caff";
+      ctx.fillRect(p.x + 6, p.y + 7, p.w - 12, 10);
+      ctx.fillStyle = "rgba(118,202,255,.25)";
+      ctx.fillRect(p.x + 4, p.y + 24, p.w - 8, 4);
+      ctx.fillStyle = "#76caff";
+      ctx.font = "9px monospace";
+      ctx.fillText("E", p.x + 9, p.y - 8);
+    }
+
+    function drawBreakable(b) {
+      ctx.fillStyle = "#34393d";
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = "rgba(215,45,56,.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x + 8, b.y + 5);
+      ctx.lineTo(b.x + 23, b.y + 36);
+      ctx.lineTo(b.x + 13, b.y + 66);
+      ctx.lineTo(b.x + 34, b.y + 88);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(118,202,255,.11)";
+      ctx.fillRect(b.x + 5, b.y, 4, b.h);
+      ctx.fillStyle = "#d72d38";
+      ctx.font = "9px monospace";
+      ctx.fillText("SHIFT", b.x - 2, b.y - 9);
+    }
+
+    function drawLaser(l) {
+      ctx.fillStyle = "#17191c";
+      ctx.fillRect(l.x - 6, l.y - 12, l.w + 12, 12);
+      ctx.fillRect(l.x - 6, l.y + l.h, l.w + 12, 12);
+      if (!l.on) return;
+      const g = ctx.createLinearGradient(l.x, l.y, l.x + l.w, l.y);
+      g.addColorStop(0, "rgba(215,45,56,.14)");
+      g.addColorStop(.5, "rgba(215,45,56,.9)");
+      g.addColorStop(1, "rgba(215,45,56,.14)");
+      ctx.fillStyle = g;
+      ctx.fillRect(l.x, l.y, l.w, l.h);
+      ctx.fillStyle = "rgba(215,45,56,.14)";
+      ctx.fillRect(l.x - 13, l.y, l.w + 26, l.h);
+    }
+
+    function drawExit() {
+      const e = state.exit;
+      ctx.fillStyle = "#0a1113";
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+      ctx.fillStyle = "rgba(100,227,59,.32)";
+      ctx.fillRect(e.x + 8, e.y + 12, e.w - 16, e.h - 24);
+      ctx.fillStyle = "#d8f7ef";
+      ctx.font = "10px monospace";
+      ctx.fillText("SALIDA", e.x + 10, e.y + 40);
+      ctx.fillText("CONT.", e.x + 12, e.y + 56);
+    }
+
+    function drawEntities() {
+      for (const c of state.corpses) drawCorpse(c);
+      for (const h of state.hosts) {
+        if (!h.alive) continue;
+        drawHost(h.type, h.x, h.y, 1, false, h.wobble);
+        drawHostMarker(h);
+      }
+      for (const d of state.drones) if (d.x < d.max + 500) drawDrone(d);
+      for (const b of state.bullets) {
+        ctx.fillStyle = "#76caff";
+        ctx.fillRect(b.x - 5, b.y - 2, 10, 4);
+      }
+      const p = state.player;
+      const s = hostStats[p.type];
+      drawHost(p.type, p.x, p.y + s.h / 2, p.facing, true, p.anim);
+    }
+
+    function drawHostMarker(h) {
+      const p = state.player;
+      const d = dist(p.x, p.y, h.x, h.y);
+      ctx.font = "9px monospace";
+      ctx.fillStyle = d < 90 ? "#e8fff7" : "rgba(185,201,199,.55)";
+      ctx.fillText(d < 90 ? "E INFECTAR" : h.name, h.x - 28, h.y - h.h - 20);
+      if (d < 90) {
+        ctx.strokeStyle = "rgba(100,227,59,.75)";
+        ctx.beginPath();
+        ctx.moveTo(h.x - 7, h.y - h.h - 13);
+        ctx.lineTo(h.x, h.y - h.h - 5);
+        ctx.lineTo(h.x + 7, h.y - h.h - 13);
+        ctx.stroke();
+      }
+    }
+
+    function drawHost(type, x, y, facing, controlled, t) {
+      if (type === "parasite") return drawParasite(x, y, facing, controlled, t);
+      if (type === "guard") return drawGuard(x, y, facing, controlled, t);
+      if (type === "dog") return drawDog(x, y, facing, controlled, t);
+      drawRobot(x, y, facing, controlled, t);
+    }
+
+    function drawCorpse(c) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      ctx.globalAlpha = Math.max(0, Math.min(1, c.life));
+      drawHost(c.type, 0, 0, c.facing, false, performance.now() / 220);
+      ctx.restore();
+    }
+
+    function controlledGlow(x, y, w, h, color) {
+      const g = ctx.createRadialGradient(x, y, 2, x, y, Math.max(w, h) * 1.4);
+      g.addColorStop(0, color);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - w * 2, y - h * 2, w * 4, h * 4);
+    }
+
+    // Ajustes de legibilidad: sombra de contacto, contorno grueso y rim light.
+    function contactShadow(x, y, w, a = .42) {
+      ctx.fillStyle = `rgba(0,0,0,${a})`;
+      ctx.fillRect(x - w / 2, y - 3, w, 6);
+    }
+
+    function px(x, y, w, h, fill, outline = "#020405") {
+      if (w < 0) { x += w; w = Math.abs(w); }
+      if (h < 0) { y += h; h = Math.abs(h); }
+      ctx.fillStyle = outline;
+      ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, w, h);
+    }
+
+    function playerFX(x, y, w, h, controlled, accent) {
+      if (!controlled) return;
+      controlledGlow(x, y - h * .35, w * 2.2, h * 1.8, accent);
+      const p = state.player;
+      if (p.abilityFlash > 0 || p.hurtFlash > 0) {
+        ctx.globalAlpha = Math.min(.5, p.abilityFlash + p.hurtFlash);
+        ctx.fillStyle = p.hurtFlash > 0 ? "#e8fff7" : "#64e33b";
+        ctx.fillRect(x - w / 2 - 6, y - h - 10, w + 12, h + 18);
+        ctx.globalAlpha = 1;
+      }
+      if (p.morph > 0) {
+        ctx.strokeStyle = `rgba(100,227,59,${.35 + p.morph})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x - w / 2 - 8, y - h - 12, w + 16, h + 20);
+      }
+    }
+
+    function drawParasite(x, y, facing, controlled, t) {
+      const p = state.player;
+      const moving = controlled && Math.abs(p.vx) > 40;
+      const pulse = Math.sin(t * 4.7) * 2;
+      const stretch = controlled && p.dash > 0 ? 7 : moving ? 3 : 0;
+      contactShadow(x, y + 9, 38, .38);
+      playerFX(x, y, 34, 24, controlled, "rgba(215,45,56,.28)");
+      px(x - 13 - stretch * .5, y - 9 + pulse, 26 + stretch, 15, "#741822");
+      px(x - 5, y - 15 + pulse * .6, 17, 18, "#d72d38");
+      ctx.fillStyle = "#ff6b6b";
+      ctx.fillRect(x - 1, y - 13 + pulse, 7, 3);
+      ctx.fillStyle = "#64e33b";
+      ctx.fillRect(x + facing * 7, y - 10 + pulse, 5 * facing, 5);
+      ctx.strokeStyle = "#8cff6b";
+      ctx.lineWidth = 3;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x - facing * 9, y + i * 3 + pulse);
+        ctx.lineTo(x - facing * (22 + stretch + Math.sin(t * 2 + i) * 5), y + i * 5 + Math.cos(t * 2 + i) * 6);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#020405";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 13 - stretch * .5, y - 9 + pulse, 26 + stretch, 15);
+    }
+
+    function drawGuard(x, y, facing, controlled, t) {
+      const p = state.player;
+      const step = Math.sin(t * 1.7) * (controlled && Math.abs(p.vx) > 20 ? 5 : 1.5);
+      const lean = controlled ? p.lean * 5 - p.recoil * facing * 7 : 0;
+      const decay = controlled ? 1 - p.stability / p.maxStability : 0;
+      contactShadow(x, y + 1, 44, .46);
+      playerFX(x, y - 20, 50, 70, controlled, "rgba(118,202,255,.22)");
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(lean * Math.PI / 180);
+      px(-13, -50, 26, 34, controlled ? "#33454a" : "#2b343b");
+      px(-10, -62, 20, 16, "#151a1f");
+      px(-8 + facing * 3, -58, 15, 5, "#76caff", "#061015");
+      ctx.fillStyle = "#bcecff";
+      ctx.fillRect(-5 + facing * 5, -57, 5, 2);
+      px(-17, -43, 9, 25, "#20282e");
+      px(8, -43, 9, 25, "#20282e");
+      px(-15, -18, 10, 18 + step, "#151a1f");
+      px(5, -18, 10, 18 - step, "#151a1f");
+      px(12 * facing, -38, 25 * facing, 7, "#1b2226");
+      ctx.fillStyle = "#76caff";
+      ctx.fillRect(12 * facing, -41, 18 * facing, 2);
+      if (controlled) {
+        ctx.fillStyle = "#d72d38";
+        ctx.fillRect(-4, -39, 8, 12);
+        ctx.fillStyle = "rgba(100,227,59,.8)";
+        ctx.fillRect(-10, -28, 3, 16 * decay);
+      }
+      ctx.restore();
+    }
+
+    function drawDog(x, y, facing, controlled, t) {
+      const p = state.player;
+      const fast = controlled && Math.abs(p.vx) > 70;
+      const step = Math.sin(t * 2.6) * (fast ? 5 : 2);
+      const lean = controlled ? p.lean * 7 : 0;
+      const decay = controlled ? 1 - p.stability / p.maxStability : 0;
+      contactShadow(x, y + 2, 62, .44);
+      playerFX(x, y - 12, 72, 44, controlled, "rgba(100,227,59,.22)");
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(lean * Math.PI / 180);
+      px(-27, -24, 46, 19, controlled ? "#4fb13a" : "#356f32");
+      px(-18, -32, 29, 11, "#3a8f34");
+      px(14 * facing, -32, 24 * facing, 15, "#64e33b");
+      ctx.fillStyle = "#d72d38";
+      ctx.fillRect(29 * facing, -25, 6 * facing, 5);
+      ctx.fillStyle = "#e8fff7";
+      ctx.fillRect(24 * facing, -29, 4 * facing, 3);
+      px(-22, -8, 8, 10 + step, "#183118");
+      px(-5, -8, 8, 10 - step, "#183118");
+      px(9, -8, 8, 10 + step * .6, "#183118");
+      ctx.strokeStyle = "#8cff6b";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-24 * facing, -18);
+      ctx.lineTo(-42 * facing, -27 + Math.sin(t * 2) * 6);
+      ctx.stroke();
+      if (controlled && decay > .25) {
+        ctx.fillStyle = "rgba(215,45,56,.9)";
+        ctx.fillRect(-8, -22, 4, 12 * decay);
+      }
+      ctx.restore();
+    }
+
+    function drawRobot(x, y, facing, controlled, t) {
+      const p = state.player;
+      const stomp = Math.abs(Math.sin(t * 1.15)) * (controlled && Math.abs(p.vx) > 10 ? 4 : 1);
+      const lean = controlled ? p.lean * 3 + p.abilityFlash * facing * 6 : 0;
+      const decay = controlled ? 1 - p.stability / p.maxStability : 0;
+      contactShadow(x, y + 2, 68, .56);
+      playerFX(x, y - 28, 74, 88, controlled, "rgba(215,45,56,.2)");
+      ctx.save();
+      ctx.translate(x, y + stomp * .3);
+      ctx.rotate(lean * Math.PI / 180);
+      px(-27, -66, 54, 50, controlled ? "#90979a" : "#6f7478");
+      px(-20, -76, 40, 16, "#3f454a");
+      ctx.fillStyle = "#ff4b38";
+      ctx.fillRect(5 * facing, -72, 12 * facing, 6);
+      ctx.fillStyle = "#ffd0c7";
+      ctx.fillRect(8 * facing, -71, 5 * facing, 2);
+      px(-34, -50, 10, 32, "#343a40");
+      px(24, -50, 10, 32, "#343a40");
+      px(-22, -18, 15, 18 - stomp, "#2f353a");
+      px(7, -18, 15, 18 + stomp, "#2f353a");
+      ctx.fillStyle = "rgba(118,202,255,.24)";
+      ctx.fillRect(-20, -56, 7, 34);
+      ctx.fillStyle = "rgba(255,75,56,.85)";
+      ctx.fillRect(15, -38, 5, 18 * decay);
+      if (controlled && p.abilityFlash > 0) {
+        ctx.fillStyle = "#ff4b38";
+        ctx.fillRect(28 * facing, -44, 18 * facing, 14);
+      }
+      ctx.restore();
+    }
+
+    function drawDrone(d) {
+      ctx.fillStyle = "#1d2328";
+      ctx.fillRect(d.x - 14, d.y - 8, 28, 16);
+      ctx.fillStyle = "#76caff";
+      ctx.fillRect(d.x - 5, d.y - 4, 10, 4);
+      ctx.strokeStyle = "rgba(118,202,255,.24)";
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y + 8);
+      ctx.lineTo(d.x, FLOOR);
+      ctx.stroke();
+    }
+
+    function drawParticles() {
+      for (const b of state.blood) {
+        ctx.fillStyle = `rgba(215,45,56,${b.life * .25})`;
+        ctx.fillRect(b.x - 24, FLOOR - 3, 48, 4);
+      }
+      for (const p of state.particles) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.globalAlpha = Math.max(0, p.life * 1.8);
+        if (p.mode === "flash") {
+          const g = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+          g.addColorStop(0, p.color);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g;
+          ctx.fillRect(-p.size, -p.size, p.size * 2, p.size * 2);
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+          if (p.mode === "spark") {
+            ctx.fillStyle = "rgba(255,255,255,.75)";
+            ctx.fillRect(-1, -p.size, 2, p.size * 2);
+          }
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawUI() {
+      const p = state.player;
+      const label = hostStats[p.type].label;
+      const low = p.stability / p.maxStability < .28;
+      const warnPulse = low ? .18 + Math.abs(Math.sin(performance.now() / 90)) * .18 : 0;
+      ctx.fillStyle = p.type === "parasite" ? "rgba(12,4,7,.86)" : "rgba(3,7,8,.82)";
+      ctx.fillRect(14, 14, W - 28, 76);
+      ctx.strokeStyle = low ? `rgba(215,45,56,${.35 + warnPulse})` : "rgba(118,202,255,.18)";
+      ctx.strokeRect(14, 14, W - 28, 76);
+      drawMiniIcon(p.type, 38, 59, low);
+      ctx.fillStyle = "#e8fff7";
+      ctx.font = "16px monospace";
+      ctx.fillText(label.toUpperCase(), 64, 38);
+      const barX = 190, barY = 26, barW = 246, barH = 16;
+      const pct = Math.max(0, p.stability / p.maxStability);
+      ctx.fillStyle = "#12181b";
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = p.type === "parasite" ? "#d72d38" : "#64e33b";
+      ctx.fillRect(barX, barY, barW * pct, barH);
+      if (low) {
+        ctx.fillStyle = `rgba(255,255,255,${warnPulse})`;
+        ctx.fillRect(barX, barY, barW * pct, barH);
+      }
+      ctx.fillStyle = "rgba(255,255,255,.11)";
+      ctx.fillRect(barX, barY, barW, 3);
+      ctx.strokeStyle = "rgba(255,255,255,.16)";
+      ctx.strokeRect(barX, barY, barW, barH);
+      ctx.fillStyle = "#b9c9c7";
+      ctx.font = "11px monospace";
+      ctx.fillText(p.type === "parasite" ? "VIDA PARASITARIA" : "ESTABILIDAD", barX, barY + 31);
+      ctx.fillStyle = "#9bead1";
+      ctx.font = "12px monospace";
+      ctx.fillText("OBJETIVO: " + objective, 462, 36);
+      ctx.fillStyle = "#6b7778";
+      ctx.fillText("E infectar/usar | Shift habilidad | Q abandonar | R reiniciar", 462, 56);
+      ctx.fillStyle = "#d8f7ef";
+      ctx.fillText(currentHint(), 28, 78);
+      if (low) {
+        ctx.fillStyle = "#ff6b6b";
+        ctx.fillText(p.type === "parasite" ? "VIDA CRÍTICA" : "COLAPSO INMINENTE", barX + 126, barY + 31);
+      }
+    }
+
+    function drawMiniIcon(type, x, y, low) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.globalAlpha = low ? .8 + Math.abs(Math.sin(performance.now() / 90)) * .2 : 1;
+      if (type === "parasite") drawParasite(0, 0, 1, false, performance.now() / 200);
+      else if (type === "guard") { ctx.scale(.55, .55); drawGuard(0, 18, 1, false, performance.now() / 260); }
+      else if (type === "dog") { ctx.scale(.55, .55); drawDog(0, 8, 1, false, performance.now() / 260); }
+      else { ctx.scale(.48, .48); drawRobot(0, 28, 1, false, performance.now() / 260); }
+      ctx.restore();
+    }
+
+    function currentHint() {
+      const p = state.player;
+      const nearHost = nearestHost(82);
+      if (nearHost) return `HUÉSPED CERCA: ${hostStats[nearHost.type].label.toUpperCase()} | pulsa E para tomarlo`;
+      for (const panel of state.panels) {
+        if (dist(p.x, p.y, panel.x, panel.y) < 92) {
+          return p.type === "guard" ? "PANEL DE SEGURIDAD: pulsa E para abrir la puerta" : "PANEL BLOQUEADO: necesitas cuerpo de Guardia";
+        }
+      }
+      for (const wall of state.breakables) {
+        if (!wall.broken && Math.abs(p.x - wall.x) < 120) {
+          return p.type === "robot" ? "MURO FRÁGIL: pulsa Shift para romperlo" : "MURO FRÁGIL: necesitas el Robot Pesado";
+        }
+      }
+      if (p.x > 1250 && p.x < 1660 && p.type !== "dog") return "TÚNEL BAJO: el Guardia no cabe; busca al Perro Mutado";
+      if (p.x > 2920 && p.x < 3220) return "PELIGRO: espera el parpadeo del láser o dispara al dron con Guardia";
+      return p.type === "parasite" ? "FUERA DE CUERPO: tu vida baja, busca huésped rápido" : "EL CUERPO SE DETERIORA: cambia de huésped antes de colapsar";
+    }
+
+    function drawPause() {
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#e8fff7";
+      ctx.font = "42px monospace";
+      ctx.fillText("PAUSA", W / 2 - 64, H / 2);
+    }
+
+    function aabb(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function centerRect(x, y, w, h) { return { x: x - w / 2, y: y - h / 2, w, h }; }
+    function dist(ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); }
+
+    window.addEventListener("keydown", e => {
+      const k = e.key.toLowerCase();
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "shift"].includes(k)) e.preventDefault();
+      if (!keys.get(k)) keys.set(k, "pressed");
+    });
+
+    window.addEventListener("keyup", e => keys.set(e.key.toLowerCase(), false));
+    document.getElementById("startBtn").addEventListener("click", startGame);
+    document.getElementById("restartBtn").addEventListener("click", () => {
+      endScreen.classList.add("hidden");
+      startGame();
+    });
+
+    reset();
+    render();
+  })();
+  </script>
+</body>
+</html>
