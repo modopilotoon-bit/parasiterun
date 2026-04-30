@@ -4,7 +4,7 @@
 
 ## Estado
 
-Build V1.5 / polish build.
+Build V1.6 / Bloque A.
 
 ## Jugar
 
@@ -74,19 +74,23 @@ El jugador no es un humano. Es un parasito experimental que escapó de una capsu
 - Puede romper paredes fragiles con `Shift`.
 - Silueta cuadrada con luces rojas.
 
-## Nivel tutorial
+## Primer nivel: Bloque A - Despertar
 
-El primer nivel ensena todas las funciones principales:
+El primer nivel funciona como tutorial jugable dentro de una fuga real de laboratorio. El jugador despierta en una capsula rota y avanza por secciones que ensenan las mecanicas sin pausar la accion:
 
 - movimiento y salto,
 - infeccion,
 - estabilidad y deterioro,
 - paneles de seguridad,
+- Bioalerta por camaras y drones,
 - cambio de cuerpo,
 - tuneles bajos,
 - saltos largos,
+- torre laser con aviso previo,
 - muro rompible,
-- drones, lasers y charcos toxicos,
+- alarma final con drones activos,
+- teaser del Cazador de Contencion,
+- charcos toxicos y lasers,
 - puerta final y victoria.
 
 ## Caracteristicas actuales
@@ -101,6 +105,10 @@ El primer nivel ensena todas las funciones principales:
 - Barra de estabilidad / vida parasitaria.
 - Tutorial paso a paso.
 - Obstaculos y peligros.
+- Sistema de Bioalerta por vigilancia.
+- Camaras fijas y drones con cono visible.
+- Torre laser con fase de carga y disparo.
+- Mini escape final al romper el muro industrial.
 - Victoria, muerte y reinicio.
 - Efectos de particulas.
 - Screen shake e hit-stop sutil.
