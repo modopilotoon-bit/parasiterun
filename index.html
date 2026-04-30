@@ -208,7 +208,7 @@
   <div id="endScreen" class="screen hidden">
     <div class="menu">
       <h1 id="endTitle">ESCAPE PARCIAL COMPLETADO</h1>
-      <p id="endText" class="tagline">Versión 1 finalizada</p>
+      <p id="endText" class="tagline">Bloque A comprometido.</p>
       <button id="restartBtn">REINICIAR</button>
     </div>
   </div>
@@ -228,7 +228,7 @@
     const toast = document.getElementById("toast");
     const W = canvas.width;
     const H = canvas.height;
-    const WORLD_W = 4100;
+    const WORLD_W = 4700;
     const FLOOR = 456;
     const GRAVITY = 1820;
 
@@ -264,6 +264,8 @@
       panels: [],
       breakables: [],
       drones: [],
+      cameras: [],
+      turrets: [],
       lasers: [],
       bullets: [],
       particles: [],
@@ -271,7 +273,14 @@
       blood: [],
       corpses: [],
       signs: [],
-      exit: { x: 3960, y: FLOOR - 104, w: 70, h: 104 }
+      capsules: [],
+      bioalert: 0,
+      bioalertCooldown: 0,
+      bioalertFlash: 0,
+      finalAlarm: false,
+      escapeTimer: 0,
+      hunter: { active: false, x: 0, t: 0 },
+      exit: { x: 4520, y: FLOOR - 116, w: 82, h: 116 }
     };
 
     function reset() {
@@ -281,50 +290,63 @@
       cameraX = 0;
       shake = 0;
       hitStop = 0;
-      objective = "Muévete hasta el guardia debilitado";
+      objective = "Encuentra un huésped antes de colapsar";
       Object.assign(state, {
         player: makePlayer(86, FLOOR - 18),
         platforms: [
           rect(0, FLOOR, WORLD_W, 90),
           rect(0, 0, 40, H),
-          rect(420, FLOOR - 28, 110, 18),
-          rect(560, FLOOR - 52, 120, 18),
-          rect(1170, FLOOR - 46, 120, 18),
-          rect(1560, FLOOR - 82, 110, 18),
-          rect(1730, FLOOR - 104, 160, 18),
-          rect(2190, FLOOR - 36, 125, 18),
-          rect(2810, FLOOR - 44, 120, 18),
-          rect(3240, FLOOR - 38, 120, 18),
-          rect(3500, FLOOR - 54, 150, 18)
+          rect(345, FLOOR - 25, 120, 18),
+          rect(520, FLOOR - 48, 135, 18),
+          rect(1210, FLOOR - 42, 120, 18),
+          rect(1600, FLOOR - 82, 125, 18),
+          rect(1780, FLOOR - 108, 170, 18),
+          rect(2380, FLOOR - 34, 140, 18),
+          rect(3030, FLOOR - 38, 130, 18),
+          rect(3490, FLOOR - 42, 130, 18),
+          rect(3970, FLOOR - 46, 140, 18)
         ],
         hosts: [
-          makeHost("guard", 660, FLOOR - 58, "SEC-01", true),
-          makeHost("dog", 1235, FLOOR - 28, "CANIS-V", true),
-          makeHost("robot", 2240, FLOOR - 66, "UNIT-R", true),
-          makeHost("guard", 3450, FLOOR - 58, "SEC-02", true)
+          makeHost("guard", 650, FLOOR - 58, "SEC-01", true),
+          makeHost("guard", 1455, FLOOR - 58, "SEC-02", true),
+          makeHost("dog", 1565, FLOOR - 28, "CANIS-V", true),
+          makeHost("guard", 2140, FLOOR - 58, "SEC-03", true),
+          makeHost("robot", 2585, FLOOR - 66, "UNIT-R", true),
+          makeHost("guard", 3920, FLOOR - 58, "SEC-04", true)
         ],
         hazards: [
-          rect(1845, FLOOR - 8, 130, 8, "toxic"),
-          rect(3130, FLOOR - 8, 95, 8, "toxic")
+          rect(2050, FLOOR - 8, 140, 8, "toxic"),
+          rect(3660, FLOOR - 8, 100, 8, "toxic"),
+          rect(4180, FLOOR - 8, 90, 8, "toxic")
         ],
         doors: [
-          { x: 1010, y: FLOOR - 120, w: 26, h: 120, open: false, id: "d1" },
-          { x: 3740, y: FLOOR - 132, w: 30, h: 132, open: false, id: "final" }
+          { x: 990, y: FLOOR - 120, w: 28, h: 120, open: false, id: "d1" },
+          { x: 2295, y: FLOOR - 124, w: 28, h: 124, open: true, id: "turret" },
+          { x: 4370, y: FLOOR - 136, w: 34, h: 136, open: false, id: "final" }
         ],
         panels: [
-          { x: 920, y: FLOOR - 78, w: 24, h: 42, door: "d1", active: false },
-          { x: 3660, y: FLOOR - 80, w: 24, h: 44, door: "final", active: false }
+          { x: 900, y: FLOOR - 78, w: 24, h: 42, door: "d1", active: false },
+          { x: 2218, y: FLOOR - 80, w: 24, h: 44, door: "turret", active: false, disables: "turret-a" },
+          { x: 4270, y: FLOOR - 82, w: 24, h: 46, door: "final", active: false }
         ],
         breakables: [
-          { x: 2545, y: FLOOR - 92, w: 42, h: 92, hp: 1, broken: false }
+          { x: 2935, y: FLOOR - 96, w: 48, h: 96, hp: 1, broken: false, alarm: true }
         ],
         drones: [
-          { x: 3040, y: FLOOR - 150, w: 28, h: 18, min: 2960, max: 3380, dir: 1, t: 0 },
-          { x: 3850, y: FLOOR - 168, w: 28, h: 18, min: 3820, max: 3940, dir: -1, t: 1 }
+          { x: 1310, y: FLOOR - 154, w: 28, h: 18, min: 1190, max: 1445, dir: 1, t: 0, cone: 205 },
+          { x: 3360, y: FLOOR - 166, w: 28, h: 18, min: 3260, max: 3570, dir: -1, t: .8, cone: 220, final: true, dormant: true },
+          { x: 4070, y: FLOOR - 170, w: 28, h: 18, min: 4010, max: 4240, dir: -1, t: 1.2, cone: 230, final: true, dormant: true }
+        ],
+        cameras: [
+          { x: 1135, y: FLOOR - 178, dir: 1, range: 250, sweep: .32, t: 0, active: true },
+          { x: 2460, y: FLOOR - 190, dir: -1, range: 220, sweep: .25, t: 1.4, active: true }
+        ],
+        turrets: [
+          { id: "turret-a", x: 1990, y: FLOOR - 96, dir: 1, range: 270, t: 0, charge: 0, active: false, disabled: false }
         ],
         lasers: [
-          { x: 2960, y: FLOOR - 118, w: 10, h: 110, on: true, t: 0 },
-          { x: 3560, y: FLOOR - 140, w: 10, h: 132, on: true, t: 1.2 }
+          { x: 3595, y: FLOOR - 120, w: 10, h: 112, on: true, t: 0 },
+          { x: 4145, y: FLOOR - 140, w: 10, h: 132, on: true, t: 1.2 }
         ],
         bullets: [],
         particles: [],
@@ -332,15 +354,28 @@
         blood: [],
         corpses: [],
         signs: [
-          { x: 145, y: FLOOR - 126, title: "01 DESPERTAR", lines: ["A/D: moverte", "W: saltar", "Sin cuerpo pierdes vida"] },
-          { x: 575, y: FLOOR - 154, title: "02 INFECCIÓN", lines: ["Acércate al guardia", "E: tomar huésped", "Shift: dash parásito"] },
-          { x: 855, y: FLOOR - 150, title: "03 ACCESO", lines: ["Guardia + E", "activa paneles azules"] },
-          { x: 1135, y: FLOOR - 154, title: "04 CAMBIO", lines: ["Q: salir del cuerpo", "o E: infectar directo"] },
-          { x: 1510, y: FLOOR - 164, title: "05 PERRO", lines: ["Corre y salta más", "pasa por túneles bajos"] },
-          { x: 2170, y: FLOOR - 146, title: "06 ROBOT", lines: ["Lento, resistente", "Shift: romper muros"] },
-          { x: 2885, y: FLOOR - 160, title: "07 PELIGROS", lines: ["Guardia dispara con Shift", "Evita toxina y láser"] },
-          { x: 3600, y: FLOOR - 152, title: "08 SALIDA", lines: ["Infecta al guardia", "E en el panel final"] }
-        ]
+          { x: 135, y: FLOOR - 132, title: "BLOQUE A", lines: ["A/D moverte", "W saltar", "Sin huésped mueres"] },
+          { x: 555, y: FLOOR - 154, title: "PRIMER HUÉSPED", lines: ["E cerca del guardia", "o Shift para lanzarte"] },
+          { x: 850, y: FLOOR - 150, title: "ACCESO SEC.", lines: ["Guardia + E", "abre paneles azules"] },
+          { x: 1120, y: FLOOR - 158, title: "VIGILANCIA", lines: ["Conos visibles", "Bioalerta no mata"] },
+          { x: 1565, y: FLOOR - 166, title: "DUCTO", lines: ["Q abandona cuerpo", "infecta huésped ágil"] },
+          { x: 1980, y: FLOOR - 152, title: "TORRE LÁSER", lines: ["Luz avisa disparo", "cruza con timing"] },
+          { x: 2510, y: FLOOR - 148, title: "CUERPO PESADO", lines: ["Robot resistente", "Shift rompe muros"] },
+          { x: 3300, y: FLOOR - 160, title: "ALARMA", lines: ["Bioalerta nivel 2", "huye a contención"] },
+          { x: 4210, y: FLOOR - 156, title: "SALIDA", lines: ["Guardia + panel", "corre antes del cierre"] }
+        ],
+        capsules: [
+          { x: 76, y: FLOOR - 122, broken: true },
+          { x: 215, y: FLOOR - 128, broken: false },
+          { x: 3220, y: FLOOR - 130, broken: true }
+        ],
+        bioalert: 0,
+        bioalertCooldown: 0,
+        bioalertFlash: 0,
+        finalAlarm: false,
+        escapeTimer: 0,
+        hunter: { active: false, x: 0, t: 0 },
+        exit: { x: 4520, y: FLOOR - 116, w: 82, h: 116 }
       });
       for (let i = 0; i < 70; i++) {
         state.fog.push({ x: Math.random() * WORLD_W, y: FLOOR - 34 + Math.random() * 46, vx: 5 + Math.random() * 13, a: .04 + Math.random() * .08, r: 18 + Math.random() * 50 });
@@ -382,7 +417,7 @@
       running = false;
       if (rafId) cancelAnimationFrame(rafId);
       endTitle.textContent = win ? "ESCAPE PARCIAL COMPLETADO" : "COLAPSO BIOLÓGICO";
-      endText.textContent = win ? "Versión 1 finalizada" : "El sujeto perdió todos sus huéspedes.";
+      endText.textContent = win ? "Bloque A comprometido." : "El sujeto perdió todos sus huéspedes.";
       endScreen.classList.remove("hidden");
       beep(win ? 620 : 110, .18, win ? "triangle" : "sawtooth", .05);
     }
@@ -391,6 +426,40 @@
       toast.textContent = text;
       toast.classList.add("show");
       toastTimer = 1.35;
+    }
+
+    // Bioalerta: presion tutorial, no muerte instantanea. La deteccion avisa,
+    // cambia luces y activa el teaser del Cazador en nivel alto.
+    function raiseBioalert(amount, text = "BIOALERTA") {
+      if (state.bioalertCooldown > 0) return;
+      state.bioalert = Math.min(3, state.bioalert + amount);
+      state.bioalertCooldown = .65;
+      state.bioalertFlash = .75;
+      shake = Math.max(shake, 2.2);
+      showToast(text);
+      beep(180 + state.bioalert * 55, .08, "square", .026);
+      if (state.bioalert >= 3) activateHunter();
+    }
+
+    function startFinalAlarm() {
+      if (state.finalAlarm) return;
+      state.finalAlarm = true;
+      state.escapeTimer = 34;
+      state.bioalert = Math.max(state.bioalert, 2);
+      state.bioalertFlash = 1.2;
+      for (const d of state.drones) if (d.final) d.dormant = false;
+      showToast("BIOALERTA NIVEL 2: CONTENCIÓN CERRÁNDOSE");
+      spray(state.player.x, state.player.y - 30, 50, ["#d72d38", "#ff4b38", "#76caff"], "spark");
+      shake = 8;
+      beep(95, .18, "sawtooth", .055);
+    }
+
+    function activateHunter() {
+      if (state.hunter.active) return;
+      state.hunter.active = true;
+      state.hunter.x = Math.max(80, state.player.x - 360);
+      state.hunter.t = 0;
+      showToast("CAZADOR DE CONTENCIÓN DETECTADO");
     }
 
     function beep(freq, dur = .08, type = "square", gain = .035) {
@@ -431,6 +500,9 @@
       toastTimer -= dt;
       if (toastTimer <= 0) toast.classList.remove("show");
       if (shake > 0) shake = Math.max(0, shake - dt * 18);
+      state.bioalertCooldown = Math.max(0, state.bioalertCooldown - dt);
+      state.bioalertFlash = Math.max(0, state.bioalertFlash - dt);
+      if (state.finalAlarm) state.escapeTimer = Math.max(0, state.escapeTimer - dt);
       if (hitStop > 0) {
         hitStop = Math.max(0, hitStop - dt);
         updateParticles(dt * .45);
@@ -459,14 +531,16 @@
 
     function updateObjective() {
       const x = state.player.x;
-      if (x < 540) objective = "Avanza al primer huésped: A/D y W";
+      const finalDoor = state.doors.find(d => d.id === "final");
+      if (x < 520) objective = "Encuentra un huésped antes de colapsar";
       else if (x < 820 && state.player.type === "parasite") objective = "Infecta al guardia debilitado con E o Shift";
-      else if (x < 1080) objective = state.doors[0].open ? "Puerta abierta: sigue avanzando" : "Usa al guardia: E en el panel azul";
-      else if (x < 1500) objective = "Cambia al perro: Q para salir o E para infectar directo";
-      else if (x < 2020) objective = "Perro mutado: cruza túnel y salto largo";
-      else if (x < 2620) objective = "Robot pesado: infecta y rompe el muro con Shift";
-      else if (x < 3440) objective = "Zona final: evita peligros y usa habilidades";
-      else if (x < 3780) objective = state.doors.find(d => d.id === "final").open ? "Corre a la salida de contención" : "Infecta guardia final y abre el panel";
+      else if (x < 1060) objective = state.doors.find(d => d.id === "d1").open ? "Puerta abierta: entra a vigilancia" : "Usa el guardia: E en el panel azul";
+      else if (x < 1480) objective = "Evita cámaras y drones: si te ven sube Bioalerta";
+      else if (x < 1840) objective = "Infecta un huésped ágil para cruzar el ducto";
+      else if (x < 2320) objective = "Cruza la torre láser con timing o desactívala con guardia";
+      else if (x < 3000) objective = "Usa fuerza pesada: robot + Shift contra el muro";
+      else if (x < 3900) objective = state.finalAlarm ? "Bioalerta nivel 2: corre por la zona de escape" : "Avanza al sector industrial";
+      else if (x < 4400) objective = finalDoor.open ? "La contención abrió: entra en la salida" : "Infecta guardia final y abre el panel";
       else objective = "Entra en SALIDA DE CONTENCIÓN";
     }
 
@@ -539,6 +613,7 @@
             wall.broken = true;
             spray(wall.x + wall.w / 2, wall.y + wall.h / 2, 64, ["#9aa0a6", "#d72d38", "#76caff"], "debris");
             showToast("PARED FRACTURADA");
+            if (wall.alarm) startFinalAlarm();
           }
         }
       }
@@ -552,7 +627,13 @@
             panel.active = true;
             const door = state.doors.find(d => d.id === panel.door);
             if (door) door.open = true;
-            showToast("PUERTA DESBLOQUEADA");
+            if (panel.disables) {
+              const turret = state.turrets.find(t => t.id === panel.disables);
+              if (turret) turret.disabled = true;
+              showToast("TORRE DESACTIVADA");
+            } else {
+              showToast("PUERTA DESBLOQUEADA");
+            }
             beep(740, .12, "triangle");
             spray(panel.x, panel.y, 22, ["#76caff", "#64e33b"]);
             return;
@@ -655,9 +736,15 @@
         if (!h.alive) continue;
         h.wobble += dt * 5;
         h.stun = Math.max(0, h.stun - dt);
+        if (h.type === "dog" && dist(p.x, p.y, h.x, h.y) < 210 && state.player.type !== "dog") {
+          const chase = Math.sign(p.x - h.x) || 1;
+          h.x += chase * 54 * dt;
+          h.wobble += dt * 7;
+        }
       }
 
       for (const d of state.drones) {
+        if (d.dormant) continue;
         d.x += d.dir * 58 * dt;
         d.t += dt;
         if (d.x < d.min || d.x > d.max) d.dir *= -1;
@@ -673,6 +760,9 @@
       for (const hz of state.hazards) {
         if (aabb(centerRect(p.x, p.y, s.w * .8, s.h * .8), hz)) hurt(p.type === "parasite" ? 9 : 3);
       }
+
+      if (!state.finalAlarm && p.x > 3060) startFinalAlarm();
+      updateSecurity(dt);
 
       for (const b of state.bullets) {
         b.x += b.vx * dt;
@@ -709,6 +799,46 @@
 
       updateParticles(dt);
       if (aabb(centerRect(p.x, p.y, s.w, s.h), state.exit) && state.doors.find(d => d.id === "final").open) finish(true);
+    }
+
+    function updateSecurity(dt) {
+      const p = state.player;
+      const s = hostStats[p.type];
+      for (const cam of state.cameras) {
+        if (!cam.active) continue;
+        cam.t += dt;
+        const dir = cam.dir + Math.sin(cam.t * 1.25) * cam.sweep;
+        if (pointInCone(p.x, p.y - s.h * .35, cam.x, cam.y, dir, cam.range, 74)) {
+          raiseBioalert(.34, "CÁMARA: BIOALERTA SUBIENDO");
+          p.hurtFlash = Math.max(p.hurtFlash, .14);
+        }
+      }
+      for (const d of state.drones) {
+        if (d.dormant) continue;
+        if (pointInCone(p.x, p.y - s.h * .4, d.x, d.y + 8, d.dir, d.cone || 190, 58)) {
+          raiseBioalert(.32, "DRON TE DETECTÓ");
+          p.hurtFlash = Math.max(p.hurtFlash, .12);
+        }
+      }
+      for (const t of state.turrets) {
+        if (t.disabled) continue;
+        t.t += dt;
+        const cycle = t.t % 2.25;
+        t.charge = cycle < 1.35 ? cycle / 1.35 : 1;
+        t.active = cycle > 1.35 && cycle < 1.72;
+        const beam = rect(t.dir > 0 ? t.x : t.x - t.range, t.y - 5, t.range, 10, "laser");
+        if (t.active && aabb(centerRect(p.x, p.y, s.w, s.h), beam)) hurt(5);
+      }
+      if (state.finalAlarm && state.escapeTimer <= 16 && state.bioalert < 3) raiseBioalert(.28, "CONTENCIÓN: TIEMPO CRÍTICO");
+      if (state.finalAlarm && state.escapeTimer <= 8) activateHunter();
+      if (p.type === "parasite" && p.stability / p.maxStability < .38 && Math.random() < dt * .5) {
+        state.bioalert = Math.min(3, state.bioalert + dt * .08);
+      }
+      if (state.hunter.active) {
+        state.hunter.t += dt;
+        state.hunter.x += (p.x - 250 - state.hunter.x) * Math.min(1, dt * .9);
+        if (dist(p.x, p.y, state.hunter.x, FLOOR - 64) < 120) raiseBioalert(.18, "EL CAZADOR SE ACERCA");
+      }
     }
 
     function updateSurvival(dt) {
@@ -777,7 +907,7 @@
       }
 
       if (p.type !== "dog") {
-        const tunnel = rect(1320, FLOOR - 52, 330, 52);
+        const tunnel = rect(1660, FLOOR - 52, 330, 52);
         if (aabb(body, tunnel)) {
           if (axis === "x") {
             if (p.vx >= 0) p.x = tunnel.x - s.w / 2;
@@ -937,14 +1067,46 @@
         ctx.fillRect(x, FLOOR + 8, 24, 4);
       }
 
+      for (const c of state.capsules) drawCapsule(c);
       drawTunnel();
       for (const s of state.signs) drawSign(s);
       for (const hz of state.hazards) drawHazard(hz);
       for (const d of state.doors) drawDoor(d);
       for (const p of state.panels) drawPanel(p);
       for (const b of state.breakables) if (!b.broken) drawBreakable(b);
+      for (const cam of state.cameras) drawCamera(cam);
+      for (const t of state.turrets) drawTurret(t);
       for (const l of state.lasers) drawLaser(l);
       drawExit();
+      if (state.finalAlarm || state.bioalert >= 2) drawAlarmWash();
+    }
+
+    function drawAlarmWash() {
+      const a = .08 + Math.abs(Math.sin(performance.now() / 160)) * .06;
+      ctx.fillStyle = `rgba(215,45,56,${a})`;
+      for (let x = Math.floor(cameraX / 260) * 260; x < cameraX + W + 260; x += 260) {
+        ctx.fillRect(x + 34, 52, 110, 10);
+      }
+    }
+
+    function drawCapsule(c) {
+      ctx.fillStyle = "rgba(4,10,12,.78)";
+      ctx.fillRect(c.x, c.y, 58, 122);
+      ctx.strokeStyle = c.broken ? "rgba(215,45,56,.45)" : "rgba(118,202,255,.24)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(c.x + 6, c.y + 8, 46, 96);
+      ctx.fillStyle = c.broken ? "rgba(215,45,56,.16)" : "rgba(100,227,59,.12)";
+      ctx.fillRect(c.x + 12, c.y + 18, 34, 76);
+      if (c.broken) {
+        ctx.strokeStyle = "rgba(232,255,247,.35)";
+        ctx.beginPath();
+        ctx.moveTo(c.x + 16, c.y + 22);
+        ctx.lineTo(c.x + 43, c.y + 58);
+        ctx.lineTo(c.x + 23, c.y + 95);
+        ctx.stroke();
+        ctx.fillStyle = "rgba(100,227,59,.35)";
+        ctx.fillRect(c.x + 12, FLOOR - 7, 42, 5);
+      }
     }
 
     function drawSign(s) {
@@ -967,13 +1129,13 @@
 
     function drawTunnel() {
       ctx.fillStyle = "rgba(5,8,9,.95)";
-      ctx.fillRect(1320, FLOOR - 52, 330, 52);
+      ctx.fillRect(1660, FLOOR - 52, 330, 52);
       ctx.fillStyle = "rgba(100,227,59,.1)";
-      for (let x = 1330; x < 1640; x += 28) ctx.fillRect(x, FLOOR - 50, 16, 3);
+      for (let x = 1670; x < 1980; x += 28) ctx.fillRect(x, FLOOR - 50, 16, 3);
       ctx.fillStyle = "#1c2528";
-      ctx.fillRect(1312, FLOOR - 64, 346, 12);
+      ctx.fillRect(1652, FLOOR - 64, 346, 12);
       ctx.fillStyle = "rgba(118,202,255,.16)";
-      ctx.fillRect(1324, FLOOR - 62, 312, 2);
+      ctx.fillRect(1664, FLOOR - 62, 312, 2);
     }
 
     function drawHazard(h) {
@@ -1038,6 +1200,52 @@
       ctx.fillRect(l.x - 13, l.y, l.w + 26, l.h);
     }
 
+    function drawCone(x, y, dir, range, halfH, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + dir * range, y - halfH - range * .18);
+      ctx.lineTo(x + dir * range, y + halfH + range * .18);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawCamera(cam) {
+      if (!cam.active) return;
+      const dir = cam.dir + Math.sin(cam.t * 1.25) * cam.sweep;
+      drawCone(cam.x, cam.y + 12, dir >= 0 ? 1 : -1, cam.range, 58, "rgba(118,202,255,.09)");
+      ctx.fillStyle = "#17191c";
+      ctx.fillRect(cam.x - 14, cam.y - 8, 28, 16);
+      ctx.fillStyle = state.bioalertFlash > 0 ? "#ff4b38" : "#76caff";
+      ctx.fillRect(cam.x - 4, cam.y - 3, 8, 6);
+      ctx.strokeStyle = "rgba(118,202,255,.25)";
+      ctx.beginPath();
+      ctx.moveTo(cam.x, cam.y - 8);
+      ctx.lineTo(cam.x, cam.y - 32);
+      ctx.stroke();
+    }
+
+    function drawTurret(t) {
+      ctx.fillStyle = "#191d20";
+      ctx.fillRect(t.x - 18, t.y - 24, 36, 48);
+      ctx.fillStyle = t.disabled ? "#64e33b" : "#ff4b38";
+      ctx.fillRect(t.x + t.dir * 4, t.y - 12, 13 * t.dir, 8);
+      if (t.disabled) {
+        ctx.fillStyle = "rgba(100,227,59,.25)";
+        ctx.fillRect(t.x - 14, t.y - 34, 28, 5);
+        return;
+      }
+      const beamX = t.dir > 0 ? t.x : t.x - t.range;
+      ctx.fillStyle = `rgba(215,45,56,${.08 + t.charge * .22})`;
+      ctx.fillRect(beamX, t.y - 3, t.range, 6);
+      if (t.active) {
+        ctx.fillStyle = "rgba(255,75,56,.82)";
+        ctx.fillRect(beamX, t.y - 5, t.range, 10);
+        ctx.fillStyle = "rgba(255,255,255,.35)";
+        ctx.fillRect(beamX, t.y - 1, t.range, 2);
+      }
+    }
+
     function drawExit() {
       const e = state.exit;
       ctx.fillStyle = "#0a1113";
@@ -1051,13 +1259,14 @@
     }
 
     function drawEntities() {
+      if (state.hunter.active) drawHunter();
       for (const c of state.corpses) drawCorpse(c);
       for (const h of state.hosts) {
         if (!h.alive) continue;
         drawHost(h.type, h.x, h.y, 1, false, h.wobble);
         drawHostMarker(h);
       }
-      for (const d of state.drones) if (d.x < d.max + 500) drawDrone(d);
+      for (const d of state.drones) if (!d.dormant && d.x < d.max + 500) drawDrone(d);
       for (const b of state.bullets) {
         ctx.fillStyle = "#76caff";
         ctx.fillRect(b.x - 5, b.y - 2, 10, 4);
@@ -1065,6 +1274,25 @@
       const p = state.player;
       const s = hostStats[p.type];
       drawHost(p.type, p.x, p.y + s.h / 2, p.facing, true, p.anim);
+    }
+
+    function drawHunter() {
+      const h = state.hunter;
+      const y = FLOOR - 4;
+      const flicker = .55 + Math.sin(h.t * 18) * .12;
+      ctx.save();
+      ctx.globalAlpha = flicker;
+      contactShadow(h.x, y, 72, .58);
+      ctx.fillStyle = "#080b0d";
+      ctx.fillRect(h.x - 22, y - 104, 44, 88);
+      ctx.fillStyle = "#151a1d";
+      ctx.fillRect(h.x - 28, y - 86, 14, 58);
+      ctx.fillRect(h.x + 14, y - 86, 14, 58);
+      ctx.fillStyle = "#ff4b38";
+      ctx.fillRect(h.x - 12, y - 94, 24, 6);
+      ctx.fillStyle = "rgba(215,45,56,.2)";
+      ctx.fillRect(h.x - 46, y - 118, 92, 116);
+      ctx.restore();
     }
 
     function drawHostMarker(h) {
@@ -1262,9 +1490,10 @@
     }
 
     function drawDrone(d) {
+      drawCone(d.x, d.y + 10, d.dir, d.cone || 190, 45, state.bioalertFlash > 0 ? "rgba(215,45,56,.12)" : "rgba(118,202,255,.075)");
       ctx.fillStyle = "#1d2328";
       ctx.fillRect(d.x - 14, d.y - 8, 28, 16);
-      ctx.fillStyle = "#76caff";
+      ctx.fillStyle = state.bioalertFlash > 0 ? "#ff4b38" : "#76caff";
       ctx.fillRect(d.x - 5, d.y - 4, 10, 4);
       ctx.strokeStyle = "rgba(118,202,255,.24)";
       ctx.beginPath();
@@ -1307,9 +1536,9 @@
       const low = p.stability / p.maxStability < .28;
       const warnPulse = low ? .18 + Math.abs(Math.sin(performance.now() / 90)) * .18 : 0;
       ctx.fillStyle = p.type === "parasite" ? "rgba(12,4,7,.86)" : "rgba(3,7,8,.82)";
-      ctx.fillRect(14, 14, W - 28, 76);
+      ctx.fillRect(14, 14, W - 28, 92);
       ctx.strokeStyle = low ? `rgba(215,45,56,${.35 + warnPulse})` : "rgba(118,202,255,.18)";
-      ctx.strokeRect(14, 14, W - 28, 76);
+      ctx.strokeRect(14, 14, W - 28, 92);
       drawMiniIcon(p.type, 38, 59, low);
       ctx.fillStyle = "#e8fff7";
       ctx.font = "16px monospace";
@@ -1331,16 +1560,40 @@
       ctx.fillStyle = "#b9c9c7";
       ctx.font = "11px monospace";
       ctx.fillText(p.type === "parasite" ? "VIDA PARASITARIA" : "ESTABILIDAD", barX, barY + 31);
+      drawBioalert(barX, barY + 44);
       ctx.fillStyle = "#9bead1";
       ctx.font = "12px monospace";
-      ctx.fillText("OBJETIVO: " + objective, 462, 36);
+      ctx.fillText("BLOQUE A — DESPERTAR", 462, 28);
+      ctx.fillText("OBJETIVO: " + objective, 462, 46);
       ctx.fillStyle = "#6b7778";
-      ctx.fillText("E infectar/usar | Shift habilidad | Q abandonar | R reiniciar", 462, 56);
+      ctx.fillText("E infectar/usar | Shift habilidad | Q abandonar | R reiniciar", 462, 66);
       ctx.fillStyle = "#d8f7ef";
-      ctx.fillText(currentHint(), 28, 78);
+      ctx.fillText(currentHint(), 28, 94);
       if (low) {
         ctx.fillStyle = "#ff6b6b";
         ctx.fillText(p.type === "parasite" ? "VIDA CRÍTICA" : "COLAPSO INMINENTE", barX + 126, barY + 31);
+      }
+    }
+
+    function drawBioalert(x, y) {
+      const pct = Math.max(0, Math.min(1, state.bioalert / 3));
+      ctx.fillStyle = "#12181b";
+      ctx.fillRect(x, y, 246, 12);
+      ctx.fillStyle = state.bioalert >= 2 ? "#ff4b38" : "#76caff";
+      ctx.fillRect(x, y, 246 * pct, 12);
+      if (state.bioalertFlash > 0) {
+        ctx.fillStyle = `rgba(255,255,255,${state.bioalertFlash * .25})`;
+        ctx.fillRect(x, y, 246, 12);
+      }
+      ctx.strokeStyle = "rgba(255,255,255,.16)";
+      ctx.strokeRect(x, y, 246, 12);
+      ctx.fillStyle = "#b9c9c7";
+      ctx.font = "10px monospace";
+      const lvl = state.bioalert < 1 ? "0" : state.bioalert < 2 ? "1" : state.bioalert < 3 ? "2" : "3";
+      ctx.fillText("BIOALERTA " + lvl, x + 78, y + 10);
+      if (state.finalAlarm) {
+        ctx.fillStyle = "#ff9a8c";
+        ctx.fillText("ESCAPE " + Math.ceil(state.escapeTimer), x + 176, y + 10);
       }
     }
 
@@ -1369,8 +1622,10 @@
           return p.type === "robot" ? "MURO FRÁGIL: pulsa Shift para romperlo" : "MURO FRÁGIL: necesitas el Robot Pesado";
         }
       }
-      if (p.x > 1250 && p.x < 1660 && p.type !== "dog") return "TÚNEL BAJO: el Guardia no cabe; busca al Perro Mutado";
-      if (p.x > 2920 && p.x < 3220) return "PELIGRO: espera el parpadeo del láser o dispara al dron con Guardia";
+      if (p.x > 1100 && p.x < 1460) return "VIGILANCIA: los conos suben Bioalerta, no matan de golpe";
+      if (p.x > 1600 && p.x < 2000 && p.type !== "dog") return "TÚNEL BAJO: el Guardia no cabe; busca al Perro Mutado";
+      if (p.x > 1900 && p.x < 2235) return "TORRE LÁSER: espera la carga roja o desactívala con un panel";
+      if (p.x > 3480 && p.x < 4250) return "ESCAPE FINAL: Bioalerta activa drones y luces rojas";
       return p.type === "parasite" ? "FUERA DE CUERPO: tu vida baja, busca huésped rápido" : "EL CUERPO SE DETERIORA: cambia de huésped antes de colapsar";
     }
 
@@ -1384,6 +1639,13 @@
 
     function aabb(a, b) {
       return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
+
+    function pointInCone(px, py, sx, sy, dir, range, halfH) {
+      const forward = (px - sx) * dir;
+      if (forward < 0 || forward > range) return false;
+      const spread = halfH + forward * .28;
+      return Math.abs(py - sy) < spread;
     }
 
     function centerRect(x, y, w, h) { return { x: x - w / 2, y: y - h / 2, w, h }; }
